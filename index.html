@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Batalha Digital - Sistema Operacional & Editor de Textos</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* OTIMIZAÇÃO CRÍTICA PARA TV INTERATIVA: Desativa gestos de zoom/rolagem do navegador */
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* BANNER SUPERIOR / CABEÇALHO DA RODADA */
+        header {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid #334155;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        .score-box {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 8px 20px;
+            border-radius: 12px;
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+
+        .score-a {
+            background-color: rgba(14, 165, 233, 0.2);
+            border: 2px solid #0ea5e9;
+            color: #38bdf8;
+        }
+
+        .score-b {
+            background-color: rgba(244, 63, 94, 0.2);
+            border: 2px solid #f43f5e;
+            color: #fb7185;
+        }
+
+        .score-val {
+            font-size: 2.2rem;
+            font-weight: 900;
+        }
+
+        .prompt-container {
+            text-align: center;
+            flex-grow: 1;
+            margin: 0 20px;
+            background: #1e293b;
+            padding: 10px 15px;
+            border-radius: 12px;
+            border: 2px solid #475569;
+        }
+
+        .prompt-category {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #94a3b8;
+            font-weight: 700;
+        }
+
+        .prompt-text {
+            font-size: 1.3rem;
+            color: #facc15;
+            font-weight: 800;
+            margin-top: 2px;
+        }
+
+        .btn-control {
+            background-color: #334155;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-control:active {
+            background-color: #475569;
+        }
+
+        /* ARENA DE JOGO (TELA DIVIDIDA) */
+        main {
+            display: flex;
+            flex-grow: 1;
+            height: calc(100vh - 85px);
+            position: relative;
+        }
+
+        .divider {
+            width: 6px;
+            background: linear-gradient(to bottom, #0ea5e9, #f43f5e);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            z-index: 5;
+        }
+
+        .team-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            gap: 12px;
+            position: relative;
+        }
+
+        .team-side.side-a {
+            background-color: #082f49;
+        }
+
+        .team-side.side-b {
+            background-color: #4c0519;
+        }
+
+        .team-title {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 12px;
+            flex-grow: 1;
+        }
+
+        /* CARDS CLICÁVEIS */
+        .card {
+            background: #1e293b;
+            border: 3px solid #475569;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .side-a .card:active {
+            transform: scale(0.95);
+            border-color: #0ea5e9;
+        }
+
+        .side-b .card:active {
+            transform: scale(0.95);
+            border-color: #f43f5e;
+        }
+
+        .card-icon {
+            font-size: 2.2rem;
+            margin-bottom: 6px;
+            pointer-events: none;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            line-height: 1.2;
+            pointer-events: none;
+        }
+
+        /* ANIMAÇÕES DE FEEDBACK */
+        .wrong-flash {
+            animation: flashRed 0.5s ease-in-out;
+            pointer-events: none;
+        }
+
+        @keyframes flashRed {
+            0%, 100% { background-color: #1e293b; border-color: #475569; }
+            50% { background-color: #7f1d1d; border-color: #ef4444; }
+        }
+
+        /* TELA DE VITÓRIA / FIM DE JOGO */
+        .modal {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-title {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 10px;
+            color: #facc15;
+        }
+
+        .modal-desc {
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            color: #cbd5e1;
+        }
+
+        .btn-restart {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 800;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="score-box score-a">
+            <span>EQUIPE AZUL</span>
+            <span class="score-val" id="score-a">0</span>
+        </div>
+
+        <div class="prompt-container">
+            <div class="prompt-category" id="prompt-category">SISTEMA OPERACIONAL</div>
+            <div class="prompt-text" id="prompt-text">Toque na opção correspondente!</div>
+        </div>
+
+        <div class="score-box score-b">
+            <span class="score-val" id="score-b">0</span>
+            <span>EQUIPE VERMELHA</span>
+        </div>
+
+        <button class="btn-control" id="btn-reset" style="margin-left: 15px;">Reiniciar</button>
+    </header>
+
+    <main>
+        <section class="team-side side-a">
+            <div class="team-title">🟦 LADO AZUL</div>
+            <div class="grid-container" id="grid-a"></div>
+        </section>
+
+        <div class="divider"></div>
+
+        <section class="team-side side-b">
+            <div class="team-title">🟥 LADO VERMELHO</div>
+            <div class="grid-container" id="grid-b"></div>
+        </section>
+
+        <div class="modal hidden" id="modal-winner">
+            <div class="modal-title" id="winner-title">VENCEDOR!</div>
+            <div class="modal-desc" id="winner-desc">Parabéns pelo conhecimento em Informática!</div>
+            <button class="btn-restart" id="btn-restart">Jogar Novamente</button>
+        </div>
+    </main>
+
+    <script>
+        const componentsData = [
+            { id: 'barra_tarefas', title: 'Barra de Tarefas', icon: '💻', category: 'SISTEMA OPERACIONAL', desc: 'Onde ficam os programas abertos e o botão do Menu Iniciar.' },
+            { id: 'area_trabalho', title: 'Área de Trabalho', icon: '🖥️', category: 'SISTEMA OPERACIONAL', desc: 'Tela principal com o papel de parede e os ícones principais.' },
+            { id: 'atalho', title: 'Criar Atalho', icon: '↗️', category: 'SISTEMA OPERACIONAL', desc: 'Ícone com setinha que abre rapidamente um programa ou arquivo.' },
+            { id: 'diretorio', title: 'Pastas / Diretórios', icon: '📁', category: 'SISTEMA OPERACIONAL', desc: 'Local usado para guardar, organizar e separar seus arquivos.' },
+            { id: 'compactacao', title: 'Compactar (ZIP/RAR)', icon: '🗜️', category: 'SISTEMA OPERACIONAL', desc: 'Ferramenta que reduz o tamanho dos arquivos para economizar espaço.' },
+            { id: 'acessorios', title: 'Acessórios', icon: '🧮', category: 'SISTEMA OPERACIONAL', desc: 'Programas nativos simples como Calculadora e Bloco de Notas.' },
+            { id: 'pesquisa', title: 'Pesquisa de Arquivos', icon: '🔍', category: 'SISTEMA OPERACIONAL', desc: 'Campo da lupa para encontrar documentos e programas sumidos.' },
+            { id: 'ferramentas_sistema', title: 'Ferramentas de Sistema', icon: '⚙️', category: 'SISTEMA OPERACIONAL', desc: 'Utilitários de manutenção como Limpeza de Disco e Gerenciador.' },
+            { id: 'formatacao_texto', title: 'Formatação de Texto', icon: '🎨', category: 'EDITOR DE TEXTOS', desc: 'Alterar a fonte, cor, tamanho, negrito (B), itálico (I) e sublinhado.' },
+            { id: 'margens_recuos', title: 'Margens e Recuos', icon: '📏', category: 'EDITOR DE TEXTOS', desc: 'Ajustar o espaço em branco ao redor da folha e início do parágrafo.' },
+            { id: 'quebra_pagina', title: 'Quebra de Página', icon: '📄', category: 'EDITOR DE TEXTOS', desc: 'Empurra o conteúdo restante diretamente para o início da próxima página.' },
+            { id: 'tabelas_graficos', title: 'Tabelas e Gráficos', icon: '📊', category: 'EDITOR DE TEXTOS', desc: 'Inserir grades organizadas com linhas/colunas ou dados visuais.' },
+            { id: 'correcao_ortografica', title: 'Correção Ortográfica', icon: '✔️', category: 'EDITOR DE TEXTOS', desc: 'Ferramenta que identifica erros de digitação com linhas onduladas.' },
+            { id: 'marcadores', title: 'Marcadores e Lista', icon: '🔢', category: 'EDITOR DE TEXTOS', desc: 'Criar listas organizadas com tópicos (bolinhas) ou números (1, 2, 3).' },
+            { id: 'bordas_sombreamento', title: 'Bordas e Fundo', icon: '🖼️', category: 'EDITOR DE TEXTOS', desc: 'Adicionar molduras e cores de fundo em parágrafos ou caixas.' },
+            { id: 'colunas', title: 'Formatar em Colunas', icon: '📰', category: 'EDITOR DE TEXTOS', desc: 'Dividir o texto na página em duas ou mais faixas (estilo jornal).' },
+            { id: 'figuras_objetos', title: 'Inserir Imagens', icon: '🖼️', category: 'EDITOR DE TEXTOS', desc: 'Importar ilustrações, fotos ou formas para ilustrar o documento.' },
+            { id: 'inclusao_digital', title: 'Letramento Digital', icon: '🌐', category: 'INCLUSÃO DIGITAL', desc: 'Saber usar a tecnologia com consciência, autonomia e ética.' }
+        ];
+
+        let scoreA = 0;
+        let scoreB = 0;
+        let currentRound = 0;
+        let rounds = [];
+        let activeComponents = [];
+        let isLockedA = false;
+        let isLockedB = false;
+
+        // ÁUDIO SEGURO
+        let audioCtx = null;
+        
+        function playSound(type) {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'correct') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(130, audioCtx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                } else if (type === 'win') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(554.37, audioCtx.currentTime + 0.1);
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.2);
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.6);
+                }
+            } catch (e) {
+                console.log("Áudio não disponível na TV");
+            }
+        }
+
+        function shuffle(array) {
+            return [...array].sort(() => Math.random() - 0.5);
+        }
+
+        function initGame() {
+            scoreA = 0;
+            scoreB = 0;
+            currentRound = 0;
+            updateScores();
+
+            activeComponents = shuffle(componentsData).slice(0, 9);
+            rounds = shuffle(activeComponents);
+
+            renderGrids();
+            nextRound();
+
+            document.getElementById('modal-winner').classList.add('hidden');
+        }
+
+        function renderGrids() {
+            const gridA = document.getElementById('grid-a');
+            const gridB = document.getElementById('grid-b');
+
+            gridA.innerHTML = '';
+            gridB.innerHTML = '';
+
+            activeComponents.forEach(comp => {
+                gridA.appendChild(createCard(comp, 'A'));
+            });
+
+            activeComponents.forEach(comp => {
+                gridB.appendChild(createCard(comp, 'B'));
+            });
+        }
+
+        function createCard(comp, team) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.dataset.id = comp.id;
+
+            // COMPATIBILIDADE PARA TV INTERATIVA (POINTER EVENTS)
+            card.onpointerdown = (e) => {
+                e.preventDefault();
+                handleTap(comp.id, team, card);
+            };
+
+            card.innerHTML = `
+                <div class="card-icon">${comp.icon}</div>
+                <div class="card-title">${comp.title}</div>
+            `;
+            return card;
+        }
+
+        function nextRound() {
+            if (currentRound >= rounds.length) {
+                endGame();
+                return;
+            }
+
+            const target = rounds[currentRound];
+            document.getElementById('prompt-category').innerText = target.category;
+            document.getElementById('prompt-text').innerText = `"${target.desc}"`;
+        }
+
+        function handleTap(selectedId, team, cardElement) {
+            if ((team === 'A' && isLockedA) || (team === 'B' && isLockedB)) return;
+
+            const target = rounds[currentRound];
+
+            if (selectedId === target.id) {
+                playSound('correct');
+                if (team === 'A') {
+                    scoreA += 10;
+                } else {
+                    scoreB += 10;
+                }
+                updateScores();
+                
+                currentRound++;
+                nextRound();
+            } else {
+                playSound('wrong');
+                cardElement.classList.add('wrong-flash');
+                setTimeout(() => cardElement.classList.remove('wrong-flash'), 500);
+
+                if (team === 'A') {
+                    isLockedA = true;
+                    setTimeout(() => isLockedA = false, 1200);
+                } else {
+                    isLockedB = true;
+                    setTimeout(() => isLockedB = false, 1200);
+                }
+            }
+        }
+
+        function updateScores() {
+            document.getElementById('score-a').innerText = scoreA;
+            document.getElementById('score-b').innerText = scoreB;
+        }
+
+        function endGame() {
+            playSound('win');
+            const modal = document.getElementById('modal-winner');
+            const title = document.getElementById('winner-title');
+            const desc = document.getElementById('winner-desc');
+
+            if (scoreA > scoreB) {
+                title.innerText = '🟦 VITÓRIA DA EQUIPE AZUL!';
+                title.style.color = '#38bdf8';
+                desc.innerText = `Placar final: ${scoreA} x ${scoreB} pontos. Dominaram o sistema!`;
+            } else if (scoreB > scoreA) {
+                title.innerText = '🟥 VITÓRIA DA EQUIPE VERMELHA!';
+                title.style.color = '#fb7185';
+                desc.innerText = `Placar final: ${scoreB} x ${scoreA} pontos. Dominaram o sistema!`;
+            } else {
+                title.innerText = '🤝 EMPATE TÉCNICO!';
+                title.style.color = '#facc15';
+                desc.innerText = `Ambas as equipes fizeram ${scoreA} pontos! Excelente desempenho!`;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        // BINDING DOS BOTÕES COM POINTER EVENTS
+        document.getElementById('btn-reset').onpointerdown = (e) => {
+            e.preventDefault();
+            initGame();
+        };
+
+        document.getElementById('btn-restart').onpointerdown = (e) => {
+            e.preventDefault();
+            initGame();
+        };
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>
